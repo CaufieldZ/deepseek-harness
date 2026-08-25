@@ -18,12 +18,18 @@ export interface ChildFacts {
 }
 
 /** Spawn function shape so tests can inject a scripted process. */
-export type Spawner = (command: string, args: string[], options: { env: Record<string, string> }) => ChildProcess
+export type Spawner = (
+  command: string,
+  args: string[],
+  options: { env: Record<string, string>; cwd?: string },
+) => ChildProcess
 
 export interface ChildManagerOptions {
   command: string
   args: string[]
   env: Record<string, string>
+  /** Working directory the child launches in; the profile's hook config resolves from it. */
+  cwd?: string
   spawner?: Spawner
   /** Milliseconds to wait for the ready line before killing the child. */
   spawnTimeoutMs: number
@@ -85,7 +91,7 @@ export class ChildManager {
   private readonly spawner: Spawner
 
   constructor(private readonly options: ChildManagerOptions) {
-    this.spawner = options.spawner ?? ((command, args, opts) => nodeSpawn(command, args, { env: opts.env }))
+    this.spawner = options.spawner ?? ((command, args, opts) => nodeSpawn(command, args, { env: opts.env, cwd: opts.cwd }))
   }
 
   /** The current base URL; undefined before the ready line. */
@@ -125,7 +131,14 @@ export class ChildManager {
   private spawnChild(): void {
     let child: ChildProcess
     try {
-      child = this.spawner(this.options.command, this.options.args, { env: this.options.env })
+      child = this.spawner(
+        this.options.command,
+        this.options.args,
+        {
+          env: this.options.env,
+          ...(this.options.cwd === undefined ? {} : { cwd: this.options.cwd }),
+        },
+      )
     } catch (error) {
       this.failFatal(error)
       return

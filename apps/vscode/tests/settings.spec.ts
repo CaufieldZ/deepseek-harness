@@ -19,7 +19,7 @@ describe('parseSettings', () => {
     const settings = parseSettings(reader({}))
     expect(settings).toEqual({
       command: 'dsh',
-      profile: 'web',
+      profile: 'vscode',
       node: undefined,
       home: undefined,
       spawnTimeoutMs: 30_000,

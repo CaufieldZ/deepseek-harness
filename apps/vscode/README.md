@@ -8,6 +8,8 @@ VSCode extension for the [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 - **Session tabs.** Each session is one `WebviewPanel` editor tab (multi-open, draggable, restored on window reload). The activity-bar session tree opens sessions; `Cmd+N` starts a new one and `Cmd+Shift+T` reopens the most recently closed one.
 - **The assembled web client.** Every panel boots the harness client UI — streaming chat, tool cards, plan, user questions, permissions — from a curated set of client bundles composed into a boot graph at panel render. The webview never talks HTTP to the child: all requests relay over the postMessage MessagePort carrier to the extension host.
+- **IDE context.** The extension host keeps a debounced snapshot of the workspace, active editor, and selection in `$DSH_HOME/vscode/context.json`; the child's `vscode` profile injects it into the first request of each turn.
+- **Claude Code hook compatibility.** The `vscode` profile mounts `hooks-claude-code` against the workspace root, so a workspace's `.claude/settings.json` hooks apply — the same file Claude Code reads. The child launches with the workspace root as its cwd for this.
 - **Keyless development fixture.** Tests and snapshots boot the panel against the in-browser fixture host; the real child path runs with `dsh.setApiKey`.
 
 ## Configuration
@@ -15,7 +17,7 @@ VSCode extension for the [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 | Setting | Default | Meaning |
 |---|---|---|
 | `dsh.command` | `dsh` | Child command: the `dsh` bin on PATH, or an absolute path to a built bin |
-| `dsh.profile` | `web` | Profile the child boots |
+| `dsh.profile` | `vscode` | Profile the child boots (`vscode` adds IDE context and CC hooks; `web` is the plain browser surface) |
 | `dsh.node` | (empty) | When set, the child command is launched through this Node executable |
 | `dsh.home` | (empty) | `DSH_HOME` for the child; empty inherits the default |
 | `dsh.spawnTimeoutMs` | `30000` | Milliseconds to wait for the child's ready line |

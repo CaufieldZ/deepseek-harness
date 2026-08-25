@@ -3038,6 +3038,24 @@ export type ApprovalPolicy = 'ask' | 'never'
 
 Source: [`packages/interaction/user-approval/src/index.ts:177`](../packages/interaction/user-approval/src/index.ts)
 
+<a id="deepseek-aidsh-vscode-context"></a>
+
+## `@deepseek-ai/dsh-vscode-context`
+
+Requires: `agents`
+
+```ts config-catalog
+/** Per-turn IDE-context scheduling. Invalid values fail plugin load. */
+export interface Config {
+  /** Absolute path of the feed file the extension host maintains; defaults to `$DSH_HOME/vscode/context.json`. */
+  feedPath?: string
+  /** Minimum milliseconds between durable injections in one session. Omit or set to 0 to inject on every eligible change. */
+  refreshIntervalMs?: number
+}
+```
+
+Source: [`packages/context/vscode-context/src/index.ts:33`](../packages/context/vscode-context/src/index.ts)
+
 <a id="deepseek-aidsh-web"></a>
 
 ## `@deepseek-ai/dsh-web`
@@ -3350,3 +3368,4 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
 - `@deepseek-ai/dsh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
 - `@deepseek-ai/dsh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))
+- `@deepseek-ai/dsh-vscode-profile` ([`packages/bundle/vscode-profile/src/index.ts`](../packages/bundle/vscode-profile/src/index.ts))

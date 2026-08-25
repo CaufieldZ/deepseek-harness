@@ -18,6 +18,9 @@
       "path": "../../packages/client/web"
     },
     {
+      "path": "../../packages/context/vscode-context"
+    },
+    {
       "path": "../../packages/host/apiproxy"
     },
     {

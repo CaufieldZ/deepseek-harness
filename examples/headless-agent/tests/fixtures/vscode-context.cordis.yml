@@ -1,0 +1,35 @@
+# Test-only composition: keep vscode-context opt-in while exercising its real Loader/app path.
+- id: vscode-context-mock-llm
+  name: './vscode-context-mock-llm.ts'
+
+# Managed child-process groups for the bash executor (spawn/kill/output plumbing).
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+
+- id: bash
+  name: '@deepseek-ai/dsh-bash-local'
+
+- id: vscode-context
+  name: '@deepseek-ai/dsh-vscode-context'
+  config:
+    feedPath: './context.json'
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: main
+        provider: vscode-context-mock
+        model: vscode-context-mock
+        cwd: !!js process.cwd()
+    persona: 'Test the vscode-context plugin.'
+    workspaceContext: false
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: 'none'
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'

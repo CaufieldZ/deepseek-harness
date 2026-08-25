@@ -15,7 +15,7 @@ export interface ConfigurationReader {
 export interface DshSettings {
   /** Command spawned as the harness child: a PATH bin or an absolute script path. */
   command: string
-  /** Profile the child boots (`web` today; `vscode` arrives with the dedicated bundle). */
+  /** Profile the child boots; `vscode` ships with the IDE-context bundle, `web` is the plain browser surface. */
   profile: string
   /** Optional Node executable used to launch `command`; undefined spawns it directly. */
   node: string | undefined
@@ -36,7 +36,7 @@ export function parseSettings(reader: ConfigurationReader): DshSettings {
   const home = reader.get<string>('home', '')
   return {
     command: reader.get<string>('command', 'dsh') ?? 'dsh',
-    profile: reader.get<string>('profile', 'web') ?? 'web',
+    profile: reader.get<string>('profile', 'vscode') ?? 'vscode',
     node: node === '' ? undefined : node,
     home: home === '' ? undefined : home,
     spawnTimeoutMs: reader.get<number>('spawnTimeoutMs', 30_000) ?? 30_000,

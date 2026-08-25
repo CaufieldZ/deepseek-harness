@@ -1,0 +1,23 @@
+# The dsh-vscode-profile bundle: the IDE-context feed and the Claude Code
+# hook bridge over the dsh-web-app surface. Applied after dsh-base and
+# dsh-web-app, so the rows below append to the composed entry list.
+#
+# A patch replaces the targeted row's whole `config`, so each row below
+# restates every key it owns.
+
+- insert:
+    # Reads $DSH_HOME/vscode/context.json, maintained by the VS Code
+    # extension host, and injects the active editor state into the first
+    # request of each turn.
+    - id: vscode-context
+      name: '@deepseek-ai/dsh-vscode-context'
+
+    # Runs the supported command-hook subset of the user's Claude Code
+    # config. `configPath` resolves from the child launch cwd — the VS Code
+    # extension spawns the child at the workspace root, so a workspace's
+    # `.claude/settings.json` (or `hooks.json` key) applies. Missing config
+    # registers nothing.
+    - id: hooks-claude-code
+      name: '@deepseek-ai/dsh-hooks-claude-code'
+      config:
+        configPath: ./.claude/settings.json

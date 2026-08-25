@@ -109,11 +109,12 @@
         },
         "dsh.profile": {
           "type": "string",
-          "default": "web",
+          "default": "vscode",
           "enum": [
+            "vscode",
             "web"
           ],
-          "markdownDescription": "Profile the child boots. `web` ships today; a dedicated `vscode` profile arrives with the IDE-context plugin."
+          "markdownDescription": "Profile the child boots. `vscode` adds the IDE-context feed and Claude Code hook compatibility; `web` is the plain browser surface."
         },
         "dsh.node": {
           "type": "string",
@@ -165,10 +166,12 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-session-title": "workspace:^",
     "@deepseek-ai/dsh-subprocess": "workspace:^",
+    "@deepseek-ai/dsh-vscode-context": "workspace:^",
     "ws": "^8.21.0"
   },
   "devDependencies": {

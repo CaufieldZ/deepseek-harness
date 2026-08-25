@@ -4,9 +4,11 @@
  * API client.
  */
 import * as vscode from 'vscode'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { ChildManager, type ChildFacts } from './child-manager.ts'
 import { NodeApiClient } from './api/node-client.ts'
 import { registerSessionCommands } from './commands.ts'
+import { buildFeed, VscodeContextFeed, type FeedEditor } from './context-feed.ts'
 import { SessionPanelManager } from './panels/session-panel.ts'
 import { SessionTreeProvider, type SessionTreeSource } from './views/session-tree.ts'
 import {
@@ -38,6 +40,7 @@ let apiKey: string | undefined
 let describePending = false
 let panels: SessionPanelManager | undefined
 let tree: SessionTreeProvider | undefined
+let feed: VscodeContextFeed | undefined
 
 /** The tree source reads the current client per call, so child restarts swap cleanly. */
 function treeSource(): SessionTreeSource {
@@ -56,15 +59,20 @@ function treeSource(): SessionTreeSource {
   }
 }
 
-/** Build a fresh manager+client pair from the current settings and key, replacing any live one. */
+/** Build a fresh manager+client+feed set from the current settings and key, replacing any live one. */
 function configure(): void {
   const settings = parseSettings(vscode.workspace.getConfiguration('dsh'))
   const split = buildChildCommand(settings)
   manager?.stop()
+  feed?.dispose()
+  // The vscode profile resolves hook configs from the launch cwd; the
+  // workspace root keeps `.claude/settings.json` discovery CC-compatible.
+  const workspaceCwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
   manager = new ChildManager({
     command: split.command,
     args: split.args,
     env: buildChildEnv(settings, apiKey ?? ''),
+    ...(workspaceCwd === undefined ? {} : { cwd: workspaceCwd }),
     spawnTimeoutMs: settings.spawnTimeoutMs,
     killGraceMs: 5_000,
     restartBackoffMinMs: 500,
@@ -77,7 +85,34 @@ function configure(): void {
     if (url === undefined) throw new Error('dsh child is not ready')
     return url
   })
+  // The feed home must match the child's home exactly: the child resolves its
+  // own default (~/.dsh) when `dsh.home` is empty, so read through the same
+  // resolver with a blank environment rather than the extension host's env.
+  feed = new VscodeContextFeed({ home: resolveDshHome(settings.home, {}) })
+  feed.schedule(captureEditorFeed())
   manager.start()
+}
+
+/** Snapshot the live editor surface into one feed document. */
+function captureEditorFeed(): ReturnType<typeof buildFeed> {
+  const toFeedEditor = (editor: vscode.TextEditor | undefined): FeedEditor | undefined => {
+    if (editor === undefined || editor.document.uri.scheme !== 'file') return undefined
+    return {
+      path: editor.document.uri.fsPath,
+      languageId: editor.document.languageId,
+      cursor: { line: editor.selection.active.line + 1, character: editor.selection.active.character + 1 },
+      selection: {
+        startLine: editor.selection.start.line + 1,
+        endLine: editor.selection.end.line + 1,
+        text: editor.document.getText(editor.selection),
+      },
+    }
+  }
+  return buildFeed(
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+    toFeedEditor(vscode.window.activeTextEditor),
+    vscode.window.visibleTextEditors.map(toFeedEditor).filter((editor): editor is FeedEditor => editor !== undefined),
+  )
 }
 
 /** Render child facts into the status bar and request the host version once ready. */
@@ -154,6 +189,16 @@ export function activate(context: vscode.ExtensionContext): void {
     if (event.affectsConfiguration('dsh')) syncContextKeys()
   }))
 
+  // Editor-state churn re-snapshots the IDE-context feed; the feed itself is
+  // rebuilt per child generation in configure(), where the home is resolved.
+  const scheduleEditorFeed = (): void => { feed?.schedule(captureEditorFeed()) }
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => { scheduleEditorFeed() }),
+    vscode.window.onDidChangeTextEditorSelection(() => { scheduleEditorFeed() }),
+    vscode.window.onDidChangeVisibleTextEditors(() => { scheduleEditorFeed() }),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => { scheduleEditorFeed() }),
+  )
+
   tree = new SessionTreeProvider(treeSource())
   const treeView = vscode.window.createTreeView('dsh.sessions', { treeDataProvider: tree })
   panels = new SessionPanelManager({ childBaseUrl: () => {
@@ -220,6 +265,8 @@ export function deactivate(): void {
   manager?.stop()
   manager = undefined
   client = undefined
+  feed?.dispose()
+  feed = undefined
   panels = undefined
   tree = undefined
   statusBar = undefined

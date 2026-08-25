@@ -70,7 +70,9 @@
         "jsonrpc-agent/tests/fixtures/subagent/subagent-dsh-sdk/child-mock-llm.ts",
         "jsonrpc-agent/tests/fixtures/subagent/subagent-dsh-sdk/mock-delegating-llm.ts",
         "*/tests/**/*.e2e.ts",
-        "*/tests/**/*.snapshot.ts"
+        "*/tests/**/*.snapshot.ts",
+        "headless-agent/tests/fixtures/vscode-context-driver.ts",
+        "headless-agent/tests/fixtures/vscode-context-mock-llm.ts"
       ],
       "project": [
         "**/*.ts"
@@ -681,6 +683,21 @@
     "packages/bundle/web-app": {
       "ignoreDependencies": [
         "@deepseek-ai/.+"
+      ]
+    },
+    "packages/bundle/vscode-profile": {
+      "ignoreDependencies": [
+        "@deepseek-ai/.+"
+      ]
+    },
+    "packages/context/vscode-context": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.e2e.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     }
   }

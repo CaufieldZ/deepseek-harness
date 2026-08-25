@@ -192,6 +192,9 @@ importers:
       '@deepseek-ai/dsh-home-paths':
         specifier: workspace:^
         version: link:../../packages/util/home-paths
+      '@deepseek-ai/dsh-hooks-claude-code':
+        specifier: workspace:^
+        version: link:../../packages/hooks/hooks-claude-code
       '@deepseek-ai/dsh-jobs-local':
         specifier: workspace:^
         version: link:../../packages/jobs/jobs-local
@@ -297,6 +300,12 @@ importers:
       '@deepseek-ai/dsh-tool-workflow':
         specifier: workspace:^
         version: link:../../packages/workflow/tool-workflow
+      '@deepseek-ai/dsh-vscode-context':
+        specifier: workspace:^
+        version: link:../../packages/context/vscode-context
+      '@deepseek-ai/dsh-vscode-profile':
+        specifier: workspace:^
+        version: link:../../packages/bundle/vscode-profile
       '@deepseek-ai/dsh-web-app':
         specifier: workspace:^
         version: link:../../packages/bundle/web-app
@@ -361,6 +370,9 @@ importers:
       '@deepseek-ai/dsh-client-modules':
         specifier: workspace:^
         version: link:../../packages/client/modules
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:^
+        version: link:../../packages/util/home-paths
       '@deepseek-ai/dsh-host-apiproxy':
         specifier: workspace:^
         version: link:../../packages/host/apiproxy
@@ -373,6 +385,9 @@ importers:
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../packages/subprocess/subprocess
+      '@deepseek-ai/dsh-vscode-context':
+        specifier: workspace:^
+        version: link:../../packages/context/vscode-context
       ws:
         specifier: ^8.21.0
         version: 8.21.0
@@ -782,6 +797,9 @@ importers:
       '@deepseek-ai/dsh-user-questions':
         specifier: workspace:*
         version: link:../packages/interaction/user-questions
+      '@deepseek-ai/dsh-vscode-context':
+        specifier: workspace:*
+        version: link:../packages/context/vscode-context
       '@deepseek-ai/dsh-web':
         specifier: workspace:*
         version: link:../packages/web/web
@@ -1315,6 +1333,22 @@ importers:
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
+
+  packages/bundle/vscode-profile:
+    dependencies:
+      '@deepseek-ai/dsh-hooks-claude-code':
+        specifier: workspace:^
+        version: link:../../hooks/hooks-claude-code
+      '@deepseek-ai/dsh-vscode-context':
+        specifier: workspace:^
+        version: link:../../context/vscode-context
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
 
   packages/bundle/web-app:
     dependencies:
@@ -3644,6 +3678,31 @@ importers:
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt
+
+  packages/context/vscode-context:
+    dependencies:
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:^
+        version: link:../../util/home-paths
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
 
   packages/core/agent:
     devDependencies:
