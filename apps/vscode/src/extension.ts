@@ -9,6 +9,9 @@ import { ChildManager, type ChildFacts } from './child-manager.ts'
 import { NodeApiClient } from './api/node-client.ts'
 import { registerSessionCommands } from './commands.ts'
 import { buildFeed, VscodeContextFeed, type FeedEditor } from './context-feed.ts'
+import {
+  applyHunks, handleDiffAction, PendingDiffs, revertHunks, warnSkipped,
+} from './diff-actions.ts'
 import { SessionPanelManager } from './panels/session-panel.ts'
 import { SessionTreeProvider, type SessionTreeSource } from './views/session-tree.ts'
 import {
@@ -201,11 +204,48 @@ export function activate(context: vscode.ExtensionContext): void {
 
   tree = new SessionTreeProvider(treeSource())
   const treeView = vscode.window.createTreeView('dsh.sessions', { treeDataProvider: tree })
+  const pending = new PendingDiffs()
+  // The editor/title Accept/Reject menu gates on whether the active file has
+  // a pending change; recompute on every editor switch and registry mutation.
+  const pendingContext = (): void => {
+    const editor = vscode.window.activeTextEditor
+    const active = editor !== undefined
+      && editor.document.uri.scheme === 'file'
+      && pending.has(editor.document.uri.fsPath)
+    void vscode.commands.executeCommand('setContext', 'dsh.pendingDiff', active)
+  }
+  const pendingPath = (): string | undefined => {
+    const editor = vscode.window.activeTextEditor
+    return editor !== undefined && editor.document.uri.scheme === 'file' ? editor.document.uri.fsPath : undefined
+  }
+  const acceptDiffCommand = vscode.commands.registerCommand('dsh.acceptDiff', async () => {
+    const path = pendingPath()
+    if (path === undefined) return
+    const entry = pending.entry(path)
+    if (entry === undefined) return
+    const outcome = await applyHunks([entry.hunk], undefined)
+    // A skipped file keeps its pending entry so the menu can retry it.
+    for (const applied of outcome.applied) pending.clear(applied)
+    pendingContext()
+    warnSkipped(outcome)
+  })
+  const rejectDiffCommand = vscode.commands.registerCommand('dsh.rejectDiff', async () => {
+    const path = pendingPath()
+    if (path === undefined) return
+    const entry = pending.entry(path)
+    if (entry === undefined) return
+    const outcome = await revertHunks([entry.hunk], undefined)
+    for (const applied of outcome.applied) pending.clear(applied)
+    pendingContext()
+    warnSkipped(outcome)
+  })
   panels = new SessionPanelManager({ childBaseUrl: () => {
     const url = manager?.currentBaseUrl
     if (url === undefined) throw new Error('dsh child is not ready')
     return url
-  }, extensionUri: context.extensionUri })
+  }, extensionUri: context.extensionUri, diffActions: {
+    handle: message => handleDiffAction(message, { pending, onChanged: pendingContext }),
+  } })
 
   const setApiKeyCommand = vscode.commands.registerCommand('dsh.setApiKey', async () => {
     const key = await promptForApiKey(store)
@@ -237,11 +277,14 @@ export function activate(context: vscode.ExtensionContext): void {
     setApiKeyCommand,
     importKeyCommand,
     restartCommand,
+    acceptDiffCommand,
+    rejectDiffCommand,
     treeView,
     tree,
     statusBar,
     channel,
     vscode.window.registerWebviewPanelSerializer('dsh.session', panels),
+    vscode.window.onDidChangeActiveTextEditor(() => { pendingContext() }),
     { dispose: () => { panels?.dispose() } },
   )
 

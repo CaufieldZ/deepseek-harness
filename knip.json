@@ -653,10 +653,10 @@
       "project": [
         "src/**/*.ts",
         "webview/src/**/*.ts",
+        "webview/src/**/*.tsx",
         "tests/**/*.ts"
       ],
       "ignoreDependencies": [
-        "react",
         "react-dom"
       ]
     },

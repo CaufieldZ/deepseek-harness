@@ -3,8 +3,16 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "lib/types",
-    "types": ["node", "vscode"],
-    "lib": ["es2024", "dom", "dom.iterable"]
+    "types": [
+      "node",
+      "vscode"
+    ],
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx"
   },
   "include": [
     "src",
@@ -31,6 +39,12 @@
     },
     {
       "path": "../../packages/subprocess/subprocess"
+    },
+    {
+      "path": "../../packages/client/ui-tool"
+    },
+    {
+      "path": "../../packages/client/locale"
     }
   ]
 }

@@ -34,6 +34,10 @@ owner 载荷为 `ToolCallOwnerProps`：`callId`、`toolName`、冻结的 `block`
 
 各类卡片的上限与 fallback 规则仍由对应的 [terminal](../../../.agents/notes/implemented/feature/2026-07-28-web-terminal-card.zh.md)、[diff](../../../.agents/notes/implemented/feature/2026-07-30-web-diff-card.zh.md)、[read](../../../.agents/notes/implemented/feature/2026-07-30-web-read-card-frontend.zh.md)、[search](../../../.agents/notes/implemented/feature/2026-07-30-web-search-card.zh.md) 和 [web](../../../.agents/notes/implemented/feature/2026-07-30-web-result-card-frontend.zh.md) Agent Note 负责。
 
+## diff 动作
+
+视图派生出 diff hunk 的调用还会在其行旁渲染 `tool.call.diff-actions` 洞。owner 载荷为 `DiffActionOwnerProps`：`callId`、`toolName`、可选 `cwd` 与 `home`，以及窄化后的 `diffs`——与 `diffCardModel` 派生的是同一组 hunks，注册方无需重新解析 wire 视图。注册进该洞会在既有行旁添加动作按钮（VSCode 面板中是 Apply/Reveal）；没有注册就什么都不渲染，web 表面保持不变。该槽位是 `single` 且会话作用域，因此注册是叠加的，不是行的接管。
+
 ## 模型体验
 
 无，因为本包只渲染已经记录的工具调用和结果，不改变模型请求、工具执行或会话事件。

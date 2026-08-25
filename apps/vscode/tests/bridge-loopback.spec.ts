@@ -18,7 +18,7 @@ describe('webview-to-child carrier chain', () => {
     child = await makeFakeChildServer()
     const pair = makeTransportPair()
     client = new VscodeApiClient(pair.webview)
-    bridge = new HostBridge({ childBaseUrl: () => child.base, channel: pair.host })
+    bridge = new HostBridge({ childBaseUrl: () => child.base, channel: pair.host, diffActions: { handle: () => {} } })
     bridge.start()
   })
   afterEach(async () => {

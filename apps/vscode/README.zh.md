@@ -8,6 +8,7 @@
 
 - **会话标签页。** 每个会话是一个 `WebviewPanel` 编辑器标签页（可多开、可拖拽、窗口重载后恢复）。活动栏会话树可打开会话；`Cmd+N` 新建会话，`Cmd+Shift+T` 重开最近关闭的会话。
 - **装配后的 web 客户端。** 每个面板启动 harness 客户端 UI——流式聊天、工具卡片、plan、用户提问、权限——由精选的客户端 bundle 集在面板渲染时组装为启动图。webview 从不直接对子进程发起 HTTP：所有请求经 postMessage MessagePort 载体中继到扩展宿主。
+- **diff 应用与审查。** 每个 `edit`/`write` 调用的 diff 卡带 Apply 与 Reveal 按钮。Apply 经工作区 API 把变更同步进你的编辑器；Reveal 打开旧→新预览。每个呈现的变更同时登记为待定：编辑器标题菜单为该文件显示 Accept Change / Reject Change，其中 Reject 把它恢复为编辑前内容。动作在扩展宿主执行——绝不经过 harness 子进程。
 - **IDE 上下文。** 扩展宿主把工作区、活动编辑器与选区的防抖快照写入 `$DSH_HOME/vscode/context.json`；子进程的 `vscode` profile 把它注入每回合的第一个请求。
 - **Claude Code 钩子兼容。** `vscode` profile 以工作区根挂载 `hooks-claude-code`，因此工作区的 `.claude/settings.json` 钩子生效——与 Claude Code 读取的是同一个文件。子进程以工作区根为启动 cwd。
 - **免 key 开发夹具。** 测试与快照在浏览器内 fixture 宿主上启动面板；真实子进程路径经 `dsh.setApiKey` 运行。
@@ -33,6 +34,7 @@
 - `dsh.restartChild` — 按当前设置重建子进程
 - `dsh.newSession` — 在新编辑器标签页中开始一个会话
 - `dsh.reopenClosedSession` — 重开最近关闭的会话标签页
+- `dsh.acceptDiff` / `dsh.rejectDiff` — 应用或回退活动编辑器的待定变更（编辑器标题菜单）
 
 ## 开发
 
@@ -46,5 +48,7 @@ code apps/vscode        # open the app folder, then F5: Run Extension
 ## Known Limitations and Deferred Work
 
 - `Cmd+Escape` 输入框聚焦尚未接线。
-- Automode 与 diff 应用/接受在后续变更中落地。
-- profile 固定为 `web`；专用 `vscode` profile 随 IDE 上下文插件一起落地。
+- Automode 在后续变更中落地。
+- **先应用后审查。** harness 的 `edit`/`write` 工具在工具执行时经沙箱写入，因此 diff 卡审查的是一个已经落到工作区的变更——Apply 同步编辑器、Reject 回退，而非 Claude Code 的接受后再写入流程。带未保存更改的文件会被两个动作跳过而非覆盖。
+- **每文件一个待定变更。** 待定注册表按解析后的路径为键；第二个会话对同一文件的 diff 会替换第一个的 Accept/Reject 条目。
+- **Reveal 只预览第一个文件。** 多文件变更只为第一个 hunk 打开旧→新 diff 预览，其余以普通文档打开。

@@ -20,7 +20,10 @@ export interface MessageTransport {
 }
 
 /** Webview→host messages (host half of the wire). */
-export type WebviewToHostMessage =
+export type WebviewToHostMessage = RelayMessage | DiffActionMessage
+
+/** The child-relay messages; diff actions stay in the extension host. */
+type RelayMessage =
   | {
     type: 'unary'
     requestId: string
@@ -38,16 +41,73 @@ export type HostToWebviewMessage =
   | { type: 'stream-chunk'; streamId: string; data: string }
   | { type: 'stream-end'; streamId: string }
 
-/** Envelope check for an arbitrary inbound message. */
-function isWebviewToHostMessage(message: unknown): message is WebviewToHostMessage {
+/** One narrowed change hunk crossing the wire to a host-local diff action. */
+export interface DiffHunkWire {
+  path: string
+  oldText: string | null
+  newText: string
+}
+
+/**
+ * A webview diff-action request. These stay in the extension host — the relay
+ * never forwards them to the child: `diff-present` registers the change in the
+ * pending registry (editor/title Accept/Reject), `diff-apply` applies it
+ * through the workspace API, and `diff-reveal` opens the old→new preview.
+ */
+export interface DiffActionMessage {
+  type: 'diff-present' | 'diff-apply' | 'diff-reveal'
+  /** The session whose turn carries the diff. */
+  sessionId: string
+  /** Session workspace root for resolving relative hunk paths. */
+  cwd?: string
+  hunks: DiffHunkWire[]
+}
+
+/** Envelope check for a child-relay message. */
+function isRelayMessage(message: unknown): message is RelayMessage {
   if (typeof message !== 'object' || message === null) return false
   const type = (message as { type?: unknown }).type
   return type === 'unary' || type === 'unary-cancel' || type === 'stream-open' || type === 'stream-cancel'
 }
 
+/**
+ * Narrow a wire diff-action request field by field; any malformed member
+ * drops the message (the relay treats it as an unknown envelope).
+ * @param message - the parsed inbound value.
+ * @returns the validated message, or undefined when it is not a diff action.
+ */
+function narrowDiffAction(message: unknown): DiffActionMessage | undefined {
+  if (typeof message !== 'object' || message === null) return undefined
+  const candidate = message as Record<string, unknown>
+  if (candidate.type !== 'diff-present' && candidate.type !== 'diff-apply' && candidate.type !== 'diff-reveal') return undefined
+  if (typeof candidate.sessionId !== 'string' || candidate.sessionId === '') return undefined
+  const cwd = candidate.cwd
+  if (cwd !== undefined && (typeof cwd !== 'string' || cwd === '')) return undefined
+  const hunks = candidate.hunks
+  if (!Array.isArray(hunks) || hunks.length === 0) return undefined
+  const narrowed: DiffHunkWire[] = []
+  for (const hunk of hunks) {
+    if (typeof hunk !== 'object' || hunk === null) return undefined
+    const { path, oldText, newText } = hunk as Record<string, unknown>
+    if (typeof path !== 'string' || path === '') return undefined
+    if (oldText !== null && typeof oldText !== 'string') return undefined
+    if (typeof newText !== 'string') return undefined
+    narrowed.push({ path, oldText, newText })
+  }
+  return { type: candidate.type, sessionId: candidate.sessionId, hunks: narrowed, ...(cwd === undefined ? {} : { cwd }) }
+}
+
+/** Host-local diff-action executor, injected by the extension entry. */
+export interface DiffActionsHandler {
+  /** Handle one narrowed diff-action request; failures surface in the host UI, not the relay. */
+  handle(message: DiffActionMessage): Promise<void> | void
+}
+
 export interface HostBridgeOptions {
   childBaseUrl: () => URL
   channel: MessageTransport
+  /** Host-local diff actions; the bridge routes diff messages here instead of the child. */
+  diffActions: DiffActionsHandler
 }
 
 /** Per-panel message relay between the webview and the harness child. */
@@ -75,7 +135,12 @@ export class HostBridge {
   }
 
   private async handleMessage(message: unknown): Promise<void> {
-    if (!isWebviewToHostMessage(message)) return
+    const diff = narrowDiffAction(message)
+    if (diff !== undefined) {
+      await this.options.diffActions.handle(diff)
+      return
+    }
+    if (!isRelayMessage(message)) return
     if (message.type === 'unary') {
       await this.handleUnary(message)
       return

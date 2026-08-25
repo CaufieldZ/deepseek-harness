@@ -1,6 +1,7 @@
 /** Tool UI slot declarations and their composed component props. */
 import type { HostDescriptionSource } from '@deepseek-ai/dsh-client-connection/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { DiffHunk } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -22,6 +23,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * function of what the turn already knows.
      */
     'tool.call.toolview': { kind: 'keyed'; scope: 'session'; owner: ToolCallOwnerProps }
+    /**
+     * Action surface of one tool call whose change derived diff hunks. The
+     * tool-call chat node declares it and the call tree renders it beside the
+     * call, so a surface acting on file changes (Apply/Reveal) mounts next to
+     * the shipped rows without replacing them. No registration renders
+     * nothing; the shipped web surface stays unchanged. The owner passes the
+     * call identity and the already-narrowed hunks (see DiffActionOwnerProps),
+     * never a raw wire view.
+     */
+    'tool.call.diff-actions': { kind: 'single'; scope: 'session'; owner: DiffActionOwnerProps }
   }
 }
 
@@ -46,6 +57,20 @@ export interface ToolCallOwnerProps {
 /** Full props of a registered atomic Tool view. */
 export type ToolCallViewProps = PropsRuntime<'tool.call.toolview'>
 
+/** Owner share of the diff-action surface: the call identity plus the narrowed hunks to act on. */
+export interface DiffActionOwnerProps {
+  /** Tool call identity, stable across running and settled forms. */
+  callId: string
+  /** Wire Tool name of the call carrying the diff. */
+  toolName: string
+  /** Session workspace root for resolving relative hunk paths. */
+  cwd?: string | undefined
+  /** Host account home. */
+  home?: string | undefined
+  /** The narrowed change hunks; the call tree renders the slot only when these derived, so they are never empty. */
+  diffs: DiffHunk[]
+}
+
 /** Injected Host description for POSIX home-path display. */
 export type ToolHostDescriptionInjected = {
   hooks: {
@@ -56,7 +81,7 @@ export type ToolHostDescriptionInjected = {
 
 /** Full props of the Tool call-tree renderer registered as a `tool-call` Chat Node. */
 export type ToolTreeProps = PropsRuntime<'conversation.chat.node', 'tool-call'>
-  & PropsRenderSlots<'tool.call.toolview'>
+  & PropsRenderSlots<'tool.call.toolview' | 'tool.call.diff-actions'>
   & PropsLocale<'conversation'>
   & InjectFace<ToolHostDescriptionInjected>
 

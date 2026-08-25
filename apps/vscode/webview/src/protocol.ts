@@ -23,6 +23,29 @@ export type WebviewToHostMessage =
   | { type: 'unary-cancel'; requestId: string }
   | { type: 'stream-open'; streamId: string; path: string }
   | { type: 'stream-cancel'; streamId: string }
+  | DiffActionMessage
+
+/** One narrowed change hunk crossing the wire to a host-local diff action. */
+export interface DiffHunkWire {
+  path: string
+  oldText: string | null
+  newText: string
+}
+
+/**
+ * A webview diff-action request. These stay in the extension host — the relay
+ * never forwards them to the child: `diff-present` registers the change in the
+ * pending registry (editor/title Accept/Reject), `diff-apply` applies it
+ * through the workspace API, and `diff-reveal` opens the old→new preview.
+ */
+export interface DiffActionMessage {
+  type: 'diff-present' | 'diff-apply' | 'diff-reveal'
+  /** The session whose turn carries the diff. */
+  sessionId: string
+  /** Session workspace root for resolving relative hunk paths. */
+  cwd?: string
+  hunks: DiffHunkWire[]
+}
 
 /** Host→webview messages. */
 export type HostToWebviewMessage =

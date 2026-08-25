@@ -14,6 +14,9 @@ const apiClient = new VscodeApiClient(transport)
   createApiClient: () => apiClient,
   fetch: (input: URL, init: RequestInit) => apiClient.relayFetch(input, init),
 }
+// The shell's diff-action surface posts host-local messages through the same
+// carrier; a global is the seam between the app entry and the shell plugin.
+;(globalThis as { __DSH_VSCODE_TRANSPORT__?: unknown }).__DSH_VSCODE_TRANSPORT__ = transport
 
 const el = document.getElementById('root')
 if (el === null) throw new Error('dsh webview: missing #root')

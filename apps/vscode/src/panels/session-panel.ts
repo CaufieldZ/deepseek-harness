@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs'
 import * as vscode from 'vscode'
-import { HostBridge } from '../bridge/host-bridge.ts'
+import { HostBridge, type DiffActionsHandler } from '../bridge/host-bridge.ts'
 import { composeGraph, loadCuratedBundles, queueFacadeText, type CuratedBundle } from '../manifest.ts'
 import { buildPanelHtml } from './html.ts'
 
@@ -16,6 +16,8 @@ const CLOSED_STACK_LIMIT = 20
 export interface SessionPanelDeps {
   childBaseUrl: () => URL
   extensionUri: vscode.Uri
+  /** Host-local diff-action executor every panel's bridge routes diff messages to. */
+  diffActions: DiffActionsHandler
 }
 
 /** Panels + relays + the closed-session stack, with the reload serializer. */
@@ -108,6 +110,7 @@ export class SessionPanelManager implements vscode.WebviewPanelSerializer {
     })
     const bridge = new HostBridge({
       childBaseUrl: this.deps.childBaseUrl,
+      diffActions: this.deps.diffActions,
       channel: {
         postMessage: (message) => { void panel.webview.postMessage(message) },
         onMessage: (listener) => {

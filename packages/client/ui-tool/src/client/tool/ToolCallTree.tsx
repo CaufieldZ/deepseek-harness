@@ -1,7 +1,8 @@
 /** Root/subcall Tool composition with one keyed atomic dispatch path. */
 import { memo, useMemo, type ReactNode } from 'react'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ToolCallOwnerProps, ToolTreeProps } from '../contract/slots.ts'
+import type { DiffActionOwnerProps, ToolCallOwnerProps, ToolTreeProps } from '../contract/slots.ts'
+import { diffCardModel } from './models/diff-card-model.ts'
 import { GenericToolCard } from './toolviews/GenericToolCard.tsx'
 import css from './ToolCallTree.module.css'
 
@@ -30,6 +31,12 @@ const ToolCall = memo(function ToolCall({
     home,
     inspect: () => { inspectCall(callId) },
   }), [callId, toolName, block, openFile, cwd, home, inspectCall])
+  // The diff-action surface renders only for a call that derived a diff card;
+  // the owner carries the narrowed hunks, never the raw wire view.
+  const diffOwner = useMemo((): DiffActionOwnerProps | null => {
+    const model = diffCardModel(block)
+    return model === null ? null : { callId, toolName, cwd, home, diffs: model.card.diffs }
+  }, [block, callId, toolName, cwd, home])
   return (
     <div
       className={css.callRow}
@@ -41,6 +48,7 @@ const ToolCall = memo(function ToolCall({
         entryKey: toolName,
         fallback: <GenericToolCard {...owner} t={t} />,
       })}
+      {diffOwner !== null && renderSlot('tool.call.diff-actions', diffOwner, { fallback: null })}
       {children}
     </div>
   )

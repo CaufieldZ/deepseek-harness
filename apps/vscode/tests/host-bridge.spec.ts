@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HostBridge, type HostToWebviewMessage, type MessageTransport, type WebviewToHostMessage } from '../src/bridge/host-bridge.ts'
+import { HostBridge, type HostToWebviewMessage, type MessageTransport } from '../src/bridge/host-bridge.ts'
 import { FAKE_DESCRIBE_VALUE, makeFakeChildServer, type FakeChildServer } from './fake-child-server.ts'
 
 /** Channel bound to the bridge: injections reach the bridge listener, posts are captured. */
 interface BridgeChannel {
   captured: HostToWebviewMessage[]
-  inject(message: WebviewToHostMessage): void
+  /** Any envelope — malformed-wire cases inject values no union would accept. */
+  inject(message: unknown): void
 }
 
 function makeBridgeChannel(): { channel: MessageTransport; state: BridgeChannel } {
@@ -33,11 +34,17 @@ describe('HostBridge', () => {
   let child: FakeChildServer
   let state: BridgeChannel
   let bridge: HostBridge
+  let handled: unknown[]
   beforeEach(async () => {
     child = await makeFakeChildServer()
     const channel = makeBridgeChannel()
     state = channel.state
-    bridge = new HostBridge({ childBaseUrl: () => child.base, channel: channel.channel })
+    handled = []
+    bridge = new HostBridge({
+      childBaseUrl: () => child.base,
+      channel: channel.channel,
+      diffActions: { handle: (message) => { handled.push(message) } },
+    })
     bridge.start()
   })
   afterEach(async () => {
@@ -105,5 +112,32 @@ describe('HostBridge', () => {
     bridge.dispose()
     await vi.waitFor(() => { expect(state.captured.some(message => message.type === 'unary-error')).toBe(true) })
     await vi.waitFor(() => { expect(state.captured.some(message => message.type === 'stream-end')).toBe(true) })
+  })
+
+  it('routes narrowed diff-action messages to the host handler, not the child', async () => {
+    state.inject({
+      type: 'diff-apply',
+      sessionId: 'sess-a',
+      cwd: '/work',
+      hunks: [{ path: 'src/a.ts', oldText: 'old\n', newText: 'new\n' }],
+    })
+    await vi.waitFor(() => { expect(handled).toHaveLength(1) })
+    expect(handled[0]).toEqual({
+      type: 'diff-apply',
+      sessionId: 'sess-a',
+      cwd: '/work',
+      hunks: [{ path: 'src/a.ts', oldText: 'old\n', newText: 'new\n' }],
+    })
+    // The diff message never became a relay request to the child.
+    expect(state.captured).toHaveLength(0)
+  })
+
+  it('drops malformed diff-action messages at the wire', async () => {
+    state.inject({ type: 'diff-apply', sessionId: 'sess-a', hunks: [{ path: 'src/a.ts', oldText: 42, newText: 'new\n' }] })
+    state.inject({ type: 'diff-present', sessionId: '', hunks: [{ path: 'src/a.ts', oldText: null, newText: '' }] })
+    state.inject({ type: 'diff-reveal', sessionId: 'sess-a', hunks: [] })
+    state.inject({ type: 'diff-apply', sessionId: 'sess-a', cwd: 7, hunks: [{ path: 'src/a.ts', oldText: null, newText: 'new\n' }] })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(handled).toHaveLength(0)
   })
 })

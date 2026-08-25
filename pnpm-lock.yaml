@@ -398,6 +398,9 @@ importers:
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
+      '@types/react':
+        specifier: ^18.3.0
+        version: 18.3.31
       '@types/vscode':
         specifier: ^1.100.0
         version: 1.134.0

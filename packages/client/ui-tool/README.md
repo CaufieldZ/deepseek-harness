@@ -34,6 +34,10 @@ This package currently owns the generic fallback and the built-in shell/pwsh, re
 
 Card-specific limits and fallback rules remain in the owning [terminal](../../../.agents/notes/implemented/feature/2026-07-28-web-terminal-card.md), [diff](../../../.agents/notes/implemented/feature/2026-07-30-web-diff-card.md), [read](../../../.agents/notes/implemented/feature/2026-07-30-web-read-card-frontend.md), [search](../../../.agents/notes/implemented/feature/2026-07-30-web-search-card.md), and [web](../../../.agents/notes/implemented/feature/2026-07-30-web-result-card-frontend.md) notes.
 
+## Diff actions
+
+A call whose view derives diff hunks also renders the `tool.call.diff-actions` hole beside its row. The owner payload is `DiffActionOwnerProps`: `callId`, `toolName`, optional `cwd` and `home`, and the narrowed `diffs` — the same hunks `diffCardModel` derives, so no registrant re-parses the wire view. Registering into the hole adds action buttons next to the shipped row (Apply/Reveal in the VSCode panel); no registration renders nothing, and the web surface stays unchanged. The slot is `single` and session-scoped, so the registration is additive, not a row takeover.
+
 ## Model Experience
 
 None, as this package renders already logged Tool calls and results without altering model requests, Tool execution, or session events.

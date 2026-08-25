@@ -8,6 +8,7 @@ VSCode extension for the [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 
 - **Session tabs.** Each session is one `WebviewPanel` editor tab (multi-open, draggable, restored on window reload). The activity-bar session tree opens sessions; `Cmd+N` starts a new one and `Cmd+Shift+T` reopens the most recently closed one.
 - **The assembled web client.** Every panel boots the harness client UI — streaming chat, tool cards, plan, user questions, permissions — from a curated set of client bundles composed into a boot graph at panel render. The webview never talks HTTP to the child: all requests relay over the postMessage MessagePort carrier to the extension host.
+- **Diff apply and review.** Every `edit`/`write` call's diff card carries Apply and Reveal buttons. Apply syncs the change into your editors through the workspace API; Reveal opens the old→new preview. Each presented change also becomes pending: the editor title menu shows Accept Change / Reject Change for the file, where Reject reverts it to the pre-edit content. The actions run in the extension host — they never reach the harness child.
 - **IDE context.** The extension host keeps a debounced snapshot of the workspace, active editor, and selection in `$DSH_HOME/vscode/context.json`; the child's `vscode` profile injects it into the first request of each turn.
 - **Claude Code hook compatibility.** The `vscode` profile mounts `hooks-claude-code` against the workspace root, so a workspace's `.claude/settings.json` hooks apply — the same file Claude Code reads. The child launches with the workspace root as its cwd for this.
 - **Keyless development fixture.** Tests and snapshots boot the panel against the in-browser fixture host; the real child path runs with `dsh.setApiKey`.
@@ -33,6 +34,7 @@ VSCode extension for the [DeepSeek Harness](https://github.com/deepseek-ai/deeps
 - `dsh.restartChild` — rebuild the child from the current settings
 - `dsh.newSession` — start a session in a new editor tab
 - `dsh.reopenClosedSession` — reopen the most recently closed session tab
+- `dsh.acceptDiff` / `dsh.rejectDiff` — apply or revert the pending change of the active editor (editor title menu)
 
 ## Development
 
@@ -46,5 +48,7 @@ When developing against a repo-built bin instead of a globally installed `dsh`, 
 ## Known Limitations and Deferred Work
 
 - `Cmd+Escape` input focus is not wired yet.
-- Automode and diff apply/accept land in follow-up changes.
-- The profile is fixed to `web`; the dedicated `vscode` profile arrives with the IDE-context plugin.
+- Automode lands in a follow-up change.
+- **Review-after-apply.** The harness `edit`/`write` tools write through the sandbox at tool time, so the diff card reviews a change that already touched the workspace — Apply syncs editors and Reject reverts, instead of the accept-then-write flow Claude Code has. A file with unsaved changes is skipped by both actions rather than overwritten.
+- **One pending change per file.** The pending registry keys by resolved path; a second session's diff on the same file replaces the first's Accept/Reject entry.
+- **Reveal previews the first file.** A multi-file change opens the old→new diff preview for the first hunk and plain documents for the rest.
