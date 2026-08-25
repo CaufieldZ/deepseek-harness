@@ -50,6 +50,17 @@ code apps/vscode        # open the app folder, then F5: Run Extension
 
 针对仓库内构建的 bin（而非全局安装的 `dsh`）开发时，把 `dsh.command` 设为 `apps/cli/lib/bin.js` 的绝对路径、`dsh.node` 设为 `node`。
 
+## 打包
+
+```sh
+pnpm --filter @deepseek-ai/dsh-vscode run build:webview   # the panel HTML + shell bundle
+pnpm --filter @deepseek-ai/dsh-vscode run build:bundle    # extension.cjs + staged curated bundles + smoke.cjs
+pnpm --dir apps/vscode exec tsx scripts/package.ts        # dsh-vscode-<version>.vsix
+pnpm --dir apps/vscode exec tsx scripts/smoke.ts apps/vscode/dsh-vscode-<version>.vsix  # packaged smoke (downloads VS Code)
+```
+
+vsix 把扩展入口打成单个 CJS 文件，并把精选客户端 bundle 暂存在其旁（打包后的扩展没有 node_modules）。用 `code --install-extension apps/vscode/dsh-vscode-<version>.vsix` 安装。
+
 ## Known Limitations and Deferred Work
 
 - `Cmd+Escape` 输入框聚焦尚未接线。

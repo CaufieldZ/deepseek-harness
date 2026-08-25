@@ -648,12 +648,14 @@
         "webview/src/main.ts",
         "webview/src/shell-plugin.ts",
         "tests/**/*.spec.ts",
-        "tests/**/*.snapshot.ts"
+        "tests/**/*.snapshot.ts",
+        "tests/e2e/**/*.ts"
       ],
       "project": [
         "src/**/*.ts",
         "webview/src/**/*.ts",
         "webview/src/**/*.tsx",
+        "scripts/**/*.ts",
         "tests/**/*.ts"
       ],
       "ignoreDependencies": [

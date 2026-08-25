@@ -61,7 +61,10 @@ const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
   // The Web build emits sourcemaps for browser debugging; publishing them is
   // what the payload policy forbids, so the bundle ships without them.
   '@deepseek-ai/dsh-web-frontend': ['dist', '!dist/**/*.map'],
-  '@deepseek-ai/dsh-vscode': ['lib/*.js'],
+  // The vsix payload: the bundled extension entry plus the panel assets the
+  // package script stages (vsce assembles the actual archive from a staged
+  // copy; this list pins what the npm manifest may publish).
+  '@deepseek-ai/dsh-vscode': ['lib/extension.cjs', 'webview-dist/**', 'curated/**', 'media/**', 'README.md'],
 }
 
 /** The subset of package.json fields this constraint check cares about. */

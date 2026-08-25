@@ -1,0 +1,12 @@
+src/**
+webview/**
+tests/**
+scripts/**
+lib/**
+!lib/extension.cjs
+node_modules/**
+tsconfig.json
+tsdown.config.ts
+vite.shell.config.ts
+**/*.map
+**/*.tsbuildinfo

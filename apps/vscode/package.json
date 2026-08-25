@@ -11,7 +11,8 @@
     "directory": "apps/vscode"
   },
   "type": "module",
-  "main": "lib/extension.js",
+  "main": "lib/extension.cjs",
+  "publisher": "caufieldz",
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -205,30 +206,38 @@
     }
   },
   "files": [
-    "lib/*.js"
+    "lib/extension.cjs",
+    "webview-dist/**",
+    "curated/**",
+    "media/**",
+    "README.md"
   ],
   "license": "MIT",
   "scripts": {
-    "build:webview": "tsx webview/build.ts"
+    "build:webview": "tsx webview/build.ts",
+    "build:bundle": "tsx scripts/bundle.ts",
+    "package": "vsce package --no-dependencies"
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-client-web": "workspace:^",
     "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-session-title": "workspace:^",
     "@deepseek-ai/dsh-subprocess": "workspace:^",
     "@deepseek-ai/dsh-vscode-context": "workspace:^",
-    "ws": "^8.21.0"
-  },
-  "devDependencies": {
-    "@deepseek-ai/dsh-client-web": "workspace:^",
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.0",
     "@types/vscode": "^1.100.0",
     "@types/ws": "^8.18.1",
+    "@vscode/test-electron": "^2.5.0",
+    "@vscode/vsce": "^3.5.0",
+    "esbuild": "^0.25.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "ws": "^8.21.0"
   }
 }

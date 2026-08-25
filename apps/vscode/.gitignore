@@ -1,0 +1,7 @@
+# Build outputs of the packaging chain (scripts/bundle.ts stages the curated
+# copies; scripts/package.ts assembles the vsix; scripts/smoke.ts downloads
+# the VS Code test build).
+curated/
+*.vsix
+.vscode-test/
+.package-tmp/

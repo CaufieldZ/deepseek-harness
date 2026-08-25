@@ -146,7 +146,10 @@ export class SessionPanelManager implements vscode.WebviewPanelSerializer {
   }
 
   private loadBundles(): readonly CuratedBundle[] {
-    this.bundles ??= loadCuratedBundles(vscode.Uri.joinPath(this.deps.extensionUri, 'webview-dist', 'shell-client.js').fsPath)
+    this.bundles ??= loadCuratedBundles(
+      vscode.Uri.joinPath(this.deps.extensionUri, 'webview-dist', 'shell-client.js').fsPath,
+      vscode.Uri.joinPath(this.deps.extensionUri, 'curated').fsPath,
+    )
     return this.bundles
   }
 }

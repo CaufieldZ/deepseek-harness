@@ -50,6 +50,17 @@ code apps/vscode        # open the app folder, then F5: Run Extension
 
 When developing against a repo-built bin instead of a globally installed `dsh`, set `dsh.command` to the absolute `apps/cli/lib/bin.js` path and `dsh.node` to `node`.
 
+## Packaging
+
+```sh
+pnpm --filter @deepseek-ai/dsh-vscode run build:webview   # the panel HTML + shell bundle
+pnpm --filter @deepseek-ai/dsh-vscode run build:bundle    # extension.cjs + staged curated bundles + smoke.cjs
+pnpm --dir apps/vscode exec tsx scripts/package.ts        # dsh-vscode-<version>.vsix
+pnpm --dir apps/vscode exec tsx scripts/smoke.ts apps/vscode/dsh-vscode-<version>.vsix  # packaged smoke (downloads VS Code)
+```
+
+The vsix bundles the extension entry into one CJS file and stages the curated client bundles beside it (a packaged extension has no node_modules). Install it with `code --install-extension apps/vscode/dsh-vscode-<version>.vsix`.
+
 ## Known Limitations and Deferred Work
 
 - `Cmd+Escape` input focus is not wired yet.
