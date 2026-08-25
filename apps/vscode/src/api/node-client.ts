@@ -10,6 +10,7 @@ import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import { hostFrameSchema, muxFrameSchema } from '@deepseek-ai/dsh-host-apiproxy/api/events.schema'
 import { serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api/rpc.schema'
 import WebSocket from 'ws'
+import { decodeWsText } from './ws-data.ts'
 
 /** The downlink pathnames (mirror of dsh-client-connection's api-path.ts). */
 const MUX_EVENTS_PATH = '/api/events.mux'
@@ -17,16 +18,6 @@ const HOST_EVENTS_PATH = '/api/events.host'
 
 type SocketItem<F> = { kind: 'frame'; envelope: RpcRequest<F> } | { kind: 'end' }
 type Parser<F> = { parse(value: unknown): F }
-
-/** ws delivers text frames as strings or Buffers depending on the peer; normalize before parsing. */
-function decodeMessageData(data: unknown): string | undefined {
-  if (typeof data === 'string') return data
-  if (Buffer.isBuffer(data)) return data.toString('utf8')
-  if (Array.isArray(data) && data.every(part => Buffer.isBuffer(part))) {
-    return Buffer.concat(data).toString('utf8')
-  }
-  return undefined
-}
 
 /**
  * Host-side API client for the spawned harness child. The base URL is read
@@ -81,7 +72,7 @@ export class NodeApiClient extends AbstractApiClient {
     const handleOpen = (): void => { onOpen?.() }
     const handleMessage = (data: unknown, isBinary: boolean): void => {
       if (isBinary) return
-      const text = decodeMessageData(data)
+      const text = decodeWsText(data)
       if (text === undefined) return
       let full: ServerRequest
       let frame: F
