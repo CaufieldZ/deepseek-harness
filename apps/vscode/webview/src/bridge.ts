@@ -35,7 +35,12 @@ export class VscodeApiClient extends AbstractApiClient {
     return WEBVIEW_BASE
   }
 
-  protected doFetch(input: URL, init?: RequestInit): Promise<Response> {
+  /**
+   * Post a request through the channel and await the paired response. Also
+   * serves the Typert gateway rpc fetch (webview/src/main.ts wires it into
+   * __DSH_TRANSPORT__.fetch); the relay maps the path onto the child base.
+   */
+  relayFetch(input: URL, init?: RequestInit): Promise<Response> {
     const requestId = crypto.randomUUID()
     const method = init?.method ?? 'GET'
     const headers = toHeaderRecord(init?.headers)
@@ -60,6 +65,10 @@ export class VscodeApiClient extends AbstractApiClient {
       void response.then(cleanup, cleanup)
     }
     return response
+  }
+
+  protected doFetch(input: URL, init?: RequestInit): Promise<Response> {
+    return this.relayFetch(input, init)
   }
 
   protected override openMux(

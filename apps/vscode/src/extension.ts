@@ -1,10 +1,14 @@
 /**
  * Extension entry: binds the vscode surfaces (settings, secret storage,
- * status bar, commands) to the child lifecycle and the API client.
+ * status bar, commands, session tree, panels) to the child lifecycle and the
+ * API client.
  */
 import * as vscode from 'vscode'
 import { ChildManager, type ChildFacts } from './child-manager.ts'
 import { NodeApiClient } from './api/node-client.ts'
+import { registerSessionCommands } from './commands.ts'
+import { SessionPanelManager } from './panels/session-panel.ts'
+import { SessionTreeProvider, type SessionTreeSource } from './views/session-tree.ts'
 import {
   API_KEY_STORAGE_KEY,
   buildChildCommand,
@@ -32,6 +36,25 @@ let statusBar: vscode.StatusBarItem | undefined
 let channel: vscode.OutputChannel | undefined
 let apiKey: string | undefined
 let describePending = false
+let panels: SessionPanelManager | undefined
+let tree: SessionTreeProvider | undefined
+
+/** The tree source reads the current client per call, so child restarts swap cleanly. */
+function treeSource(): SessionTreeSource {
+  const current = (): NodeApiClient => {
+    if (client === undefined) throw new Error('dsh child is not ready')
+    return client
+  }
+  return {
+    listSessions: async () => {
+      if (client === undefined) return []
+      const response = await client.sessions.list({})
+      return response.result.ok ? response.result.value.items : []
+    },
+    hostFrames: signal => current().events.host({}, signal),
+    muxFrames: signal => current().events.mux({}, signal),
+  }
+}
 
 /** Build a fresh manager+client pair from the current settings and key, replacing any live one. */
 function configure(): void {
@@ -72,6 +95,7 @@ function renderFacts(facts: ChildFacts): void {
     case 'ready': {
       statusBar.text = '$(pass) dsh'
       statusBar.tooltip = String(facts.baseUrl ?? '')
+      tree?.start()
       void describeOnce()
       break
     }
@@ -114,10 +138,29 @@ async function promptForApiKey(store: ApiKeyStore): Promise<string | undefined> 
   return key
 }
 
+/** Mirror the shortcut switches into when-clause context keys. */
+function syncContextKeys(): void {
+  const config = vscode.workspace.getConfiguration('dsh')
+  void vscode.commands.executeCommand('setContext', 'dsh.enableNewConversationShortcut', config.get<boolean>('enableNewConversationShortcut', false))
+  void vscode.commands.executeCommand('setContext', 'dsh.enableReopenClosedSessionShortcut', config.get<boolean>('enableReopenClosedSessionShortcut', true))
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   channel = vscode.window.createOutputChannel('dsh')
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
   const store = new ApiKeyStore(context.secrets)
+  syncContextKeys()
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('dsh')) syncContextKeys()
+  }))
+
+  tree = new SessionTreeProvider(treeSource())
+  const treeView = vscode.window.createTreeView('dsh.sessions', { treeDataProvider: tree })
+  panels = new SessionPanelManager({ childBaseUrl: () => {
+    const url = manager?.currentBaseUrl
+    if (url === undefined) throw new Error('dsh child is not ready')
+    return url
+  }, extensionUri: context.extensionUri })
 
   const setApiKeyCommand = vscode.commands.registerCommand('dsh.setApiKey', async () => {
     const key = await promptForApiKey(store)
@@ -140,7 +183,22 @@ export function activate(context: vscode.ExtensionContext): void {
   const restartCommand = vscode.commands.registerCommand('dsh.restartChild', () => {
     configure()
   })
-  context.subscriptions.push(setApiKeyCommand, importKeyCommand, restartCommand, statusBar, channel)
+  registerSessionCommands(context, {
+    client: () => client,
+    panels: () => panels,
+    workspaceRoot: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+  })
+  context.subscriptions.push(
+    setApiKeyCommand,
+    importKeyCommand,
+    restartCommand,
+    treeView,
+    tree,
+    statusBar,
+    channel,
+    vscode.window.registerWebviewPanelSerializer('dsh.session', panels),
+    { dispose: () => { panels?.dispose() } },
+  )
 
   void (async () => {
     apiKey = await store.get()
@@ -162,6 +220,8 @@ export function deactivate(): void {
   manager?.stop()
   manager = undefined
   client = undefined
+  panels = undefined
+  tree = undefined
   statusBar = undefined
   channel = undefined
 }

@@ -8,7 +8,7 @@ import { defineConfig } from 'tsdown'
  * apps/cli.
  */
 export default defineConfig({
-  entry: ['lib/types/extension.js'],
+  entry: ['lib/types/src/extension.js'],
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',

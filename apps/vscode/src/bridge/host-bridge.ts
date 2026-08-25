@@ -5,10 +5,45 @@
  * the SSE wire encoding the webview's readSse-style parser consumes
  * (`data: <json>\n\n`). The relay only ever targets the child base URL, so
  * webview-supplied paths cannot reach anything beyond the loopback child.
+ *
+ * This file owns the host half of the postMessage wire; the webview half
+ * (webview/src/protocol.ts) mirrors these literals, and the loopback test
+ * pins the two halves together.
  */
 import WebSocket from 'ws'
 import { decodeWsText } from '../api/ws-data.ts'
-import { isWebviewToHostMessage, type HostToWebviewMessage, type MessageTransport, type WebviewToHostMessage } from '../webview/protocol.ts'
+
+/** Minimal postMessage-shaped channel so the relay stays testable without vscode types. */
+export interface MessageTransport {
+  postMessage(message: unknown): void
+  onMessage(listener: (message: unknown) => void): () => void
+}
+
+/** Webview→host messages (host half of the wire). */
+export type WebviewToHostMessage =
+  | {
+    type: 'unary'
+    requestId: string
+    path: string
+    init: { method: string; headers: Record<string, string>; body?: string }
+  }
+  | { type: 'unary-cancel'; requestId: string }
+  | { type: 'stream-open'; streamId: string; path: string }
+  | { type: 'stream-cancel'; streamId: string }
+
+/** Host→webview messages (host half of the wire). */
+export type HostToWebviewMessage =
+  | { type: 'unary-response'; requestId: string; status: number; headers: Record<string, string>; bodyText?: string }
+  | { type: 'unary-error'; requestId: string; error: string }
+  | { type: 'stream-chunk'; streamId: string; data: string }
+  | { type: 'stream-end'; streamId: string }
+
+/** Envelope check for an arbitrary inbound message. */
+function isWebviewToHostMessage(message: unknown): message is WebviewToHostMessage {
+  if (typeof message !== 'object' || message === null) return false
+  const type = (message as { type?: unknown }).type
+  return type === 'unary' || type === 'unary-cancel' || type === 'stream-open' || type === 'stream-cancel'
+}
 
 export interface HostBridgeOptions {
   childBaseUrl: () => URL

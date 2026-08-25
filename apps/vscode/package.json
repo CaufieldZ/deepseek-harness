@@ -34,8 +34,71 @@
         "command": "dsh.restartChild",
         "title": "Restart Harness Child Process",
         "category": "dsh"
+      },
+      {
+        "command": "dsh.newSession",
+        "title": "New Session",
+        "category": "dsh"
+      },
+      {
+        "command": "dsh.openSession",
+        "title": "Open Session",
+        "category": "dsh"
+      },
+      {
+        "command": "dsh.reopenClosedSession",
+        "title": "Reopen Closed Session",
+        "category": "dsh"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dsh.newSession"
+        },
+        {
+          "command": "dsh.reopenClosedSession"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "dsh.newSession",
+          "when": "view == dsh.sessions",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "dsh.newSession",
+        "key": "cmd+n",
+        "mac": "cmd+n",
+        "when": "dsh.enableNewConversationShortcut"
+      },
+      {
+        "command": "dsh.reopenClosedSession",
+        "key": "cmd+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "dsh.enableReopenClosedSessionShortcut"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dsh",
+          "title": "dsh",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "dsh": [
+        {
+          "id": "dsh.sessions",
+          "name": "Sessions"
+        }
+      ]
+    },
     "configuration": {
       "title": "dsh",
       "properties": {
@@ -71,6 +134,24 @@
           "type": "object",
           "default": {},
           "markdownDescription": "Extra environment entries for the child, merged after the credential entry. Use for `DEEPSEEK_BASE_URL`-style deployment overrides."
+        },
+        "dsh.enableNewConversationShortcut": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Use Cmd/Ctrl+N to start a new session when the dsh views are focused."
+        },
+        "dsh.enableReopenClosedSessionShortcut": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Use Cmd/Ctrl+Shift+T to reopen the most recently closed dsh session."
+        },
+        "dsh.preferredLocation": {
+          "type": "string",
+          "default": "tab",
+          "enum": [
+            "tab"
+          ],
+          "markdownDescription": "Where dsh sessions open. `tab` (editor tabs) ships today."
         }
       }
     }
@@ -79,14 +160,24 @@
     "lib/*.js"
   ],
   "license": "MIT",
+  "scripts": {
+    "build:webview": "tsx webview/build.ts"
+  },
   "dependencies": {
+    "@deepseek-ai/dsh-client-modules": "workspace:^",
     "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
+    "@deepseek-ai/dsh-session-projection": "workspace:^",
+    "@deepseek-ai/dsh-session-title": "workspace:^",
     "@deepseek-ai/dsh-subprocess": "workspace:^",
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-client-web": "workspace:^",
     "@types/node": "^22.20.0",
     "@types/vscode": "^1.100.0",
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vite": "^6.0.0"
   }
 }

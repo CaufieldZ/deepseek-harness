@@ -30,10 +30,3 @@ export type HostToWebviewMessage =
   | { type: 'unary-error'; requestId: string; error: string }
   | { type: 'stream-chunk'; streamId: string; data: string }
   | { type: 'stream-end'; streamId: string }
-
-/** Envelope check for an arbitrary inbound message. */
-export function isWebviewToHostMessage(message: unknown): message is WebviewToHostMessage {
-  if (typeof message !== 'object' || message === null) return false
-  const type = (message as { type?: unknown }).type
-  return type === 'unary' || type === 'unary-cancel' || type === 'stream-open' || type === 'stream-cancel'
-}

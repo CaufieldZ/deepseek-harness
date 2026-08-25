@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HostBridge } from '../src/bridge/host-bridge.ts'
-import type { HostToWebviewMessage, MessageTransport, WebviewToHostMessage } from '../src/webview/protocol.ts'
+import { HostBridge, type HostToWebviewMessage, type MessageTransport, type WebviewToHostMessage } from '../src/bridge/host-bridge.ts'
 import { FAKE_DESCRIBE_VALUE, makeFakeChildServer, type FakeChildServer } from './fake-child-server.ts'
 
 /** Channel bound to the bridge: injections reach the bridge listener, posts are captured. */

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { VscodeApiClient } from '../src/webview/bridge.ts'
-import type { HostToWebviewMessage, MessageTransport, WebviewToHostMessage } from '../src/webview/protocol.ts'
+import { VscodeApiClient } from '../webview/src/bridge.ts'
+import type { HostToWebviewMessage, MessageTransport, WebviewToHostMessage } from '../webview/src/protocol.ts'
 
 /** A scripted transport: records posts and lets the test inject host replies. */
 interface FakeTransport extends MessageTransport {

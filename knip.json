@@ -643,12 +643,19 @@
     "apps/vscode": {
       "entry": [
         "src/extension.ts",
+        "webview/src/main.ts",
+        "webview/src/shell-plugin.ts",
         "tests/**/*.spec.ts",
         "tests/**/*.snapshot.ts"
       ],
       "project": [
         "src/**/*.ts",
+        "webview/src/**/*.ts",
         "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "react",
+        "react-dom"
       ]
     },
     "packages/subagent/subagent-dsh-sdk": {

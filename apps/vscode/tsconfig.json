@@ -1,16 +1,30 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "lib/types",
-    "types": ["node", "vscode"]
+    "types": ["node", "vscode"],
+    "lib": ["es2024", "dom", "dom.iterable"]
   },
   "include": [
-    "src"
+    "src",
+    "webview/src"
   ],
   "references": [
     {
+      "path": "../../packages/client/modules"
+    },
+    {
+      "path": "../../packages/client/web"
+    },
+    {
       "path": "../../packages/host/apiproxy"
+    },
+    {
+      "path": "../../packages/session/session-projection"
+    },
+    {
+      "path": "../../packages/session/session-title"
     },
     {
       "path": "../../packages/subprocess/subprocess"

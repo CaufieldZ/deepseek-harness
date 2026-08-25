@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HostBridge } from '../src/bridge/host-bridge.ts'
-import { VscodeApiClient } from '../src/webview/bridge.ts'
+import { VscodeApiClient } from '../webview/src/bridge.ts'
 import { FAKE_DESCRIBE_VALUE, makeFakeChildServer, type FakeChildServer } from './fake-child-server.ts'
 import { makeTransportPair } from './transport-pair.ts'
 

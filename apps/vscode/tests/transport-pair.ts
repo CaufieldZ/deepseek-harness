@@ -1,4 +1,4 @@
-import type { MessageTransport } from '../src/webview/protocol.ts'
+import type { MessageTransport } from '../webview/src/protocol.ts'
 
 /**
  * Two transports wired back-to-back so the webview client and the host

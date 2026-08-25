@@ -358,9 +358,18 @@ importers:
 
   apps/vscode:
     dependencies:
+      '@deepseek-ai/dsh-client-modules':
+        specifier: workspace:^
+        version: link:../../packages/client/modules
       '@deepseek-ai/dsh-host-apiproxy':
         specifier: workspace:^
         version: link:../../packages/host/apiproxy
+      '@deepseek-ai/dsh-session-projection':
+        specifier: workspace:^
+        version: link:../../packages/session/session-projection
+      '@deepseek-ai/dsh-session-title':
+        specifier: workspace:^
+        version: link:../../packages/session/session-title
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../packages/subprocess/subprocess
@@ -368,6 +377,9 @@ importers:
         specifier: ^8.21.0
         version: 8.21.0
     devDependencies:
+      '@deepseek-ai/dsh-client-web':
+        specifier: workspace:^
+        version: link:../../packages/client/web
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
@@ -377,6 +389,15 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.3(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
 
   apps/web:
     devDependencies:

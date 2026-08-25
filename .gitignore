@@ -39,3 +39,6 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
+
+# apps/vscode webview vite output
+apps/vscode/webview-dist/
