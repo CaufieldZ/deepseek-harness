@@ -6,6 +6,7 @@ import {
   extractAcpApiKey,
   parseSettings,
   type ConfigurationReader,
+  type DshSettings,
 } from '../src/settings.ts'
 
 function reader(overrides: Record<string, unknown>): ConfigurationReader {
@@ -24,6 +25,7 @@ describe('parseSettings', () => {
       home: undefined,
       spawnTimeoutMs: 30_000,
       extraEnv: {},
+      initialPreset: 'read-only',
     })
   })
 
@@ -33,6 +35,13 @@ describe('parseSettings', () => {
     expect(settings.node).toBeUndefined()
     expect(settings.home).toBeUndefined()
     expect(settings.extraEnv).toEqual({ A: '1' })
+  })
+
+  it('maps the initial permission mode onto its preset and falls back on unknown values', () => {
+    expect(parseSettings(reader({ initialPermissionMode: 'auto' })).initialPreset).toBe('workspace-write')
+    expect(parseSettings(reader({ initialPermissionMode: 'fullAccess' })).initialPreset).toBe('danger-full-access')
+    expect(parseSettings(reader({ initialPermissionMode: 'full-access' })).initialPreset).toBe('read-only')
+    expect(parseSettings(reader({ initialPermissionMode: 3 })).initialPreset).toBe('read-only')
   })
 })
 
@@ -45,7 +54,7 @@ describe('buildChildEnv', () => {
   it('scrubs DSH_* and credential-looking parent entries and adds the key', () => {
     process.env.DSH_FAKE_TEST = 'parent'
     process.env.FAKE_SECRET_TOKEN = 'parent'
-    const env = buildChildEnv({ command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {} }, 'sk-child')
+    const env = buildChildEnv({ command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {}, initialPreset: 'read-only' }, 'sk-child')
     expect(env.DEEPSEEK_API_KEY).toBe('sk-child')
     expect(env.DSH_FAKE_TEST).toBeUndefined()
     expect(env.FAKE_SECRET_TOKEN).toBeUndefined()
@@ -59,6 +68,7 @@ describe('buildChildEnv', () => {
       home: '/tmp/dsh-home',
       spawnTimeoutMs: 1,
       extraEnv: { DEEPSEEK_BASE_URL: 'https://example.invalid' },
+      initialPreset: 'read-only',
     }, 'sk-child')
     expect(env.DSH_HOME).toBe('/tmp/dsh-home')
     expect(env.DEEPSEEK_BASE_URL).toBe('https://example.invalid')
@@ -66,7 +76,7 @@ describe('buildChildEnv', () => {
 })
 
 describe('buildChildCommand', () => {
-  const base = { command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {} }
+  const base = { command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {}, initialPreset: 'read-only' } satisfies DshSettings
 
   it('spawns the command directly without a node launcher', () => {
     expect(buildChildCommand(base)).toEqual({ command: 'dsh', args: ['--profile', 'web', '--no-open', '--port', '0'] })
@@ -82,7 +92,7 @@ describe('buildChildCommand', () => {
 
 describe('buildChildArgs', () => {
   it('forwards the profile and the headless web switches', () => {
-    expect(buildChildArgs({ command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {} }))
+    expect(buildChildArgs({ command: 'dsh', profile: 'web', node: undefined, home: undefined, spawnTimeoutMs: 1, extraEnv: {}, initialPreset: 'read-only' }))
       .toEqual(['--profile', 'web', '--no-open', '--port', '0'])
   })
 })

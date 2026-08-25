@@ -5,6 +5,7 @@
  * SecretStorage to these shapes.
  */
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
+import { INITIAL_PRESETS, isInitialPermissionMode, type PermissionPreset } from './permission-mode.ts'
 
 /** Raw configuration reader shape (vscode.WorkspaceConfiguration satisfies it). */
 export interface ConfigurationReader {
@@ -25,6 +26,8 @@ export interface DshSettings {
   spawnTimeoutMs: number
   /** Extra environment entries for the child, merged after the credential entry. */
   extraEnv: Record<string, string>
+  /** The permission preset the child starts from (new-session default). */
+  initialPreset: PermissionPreset
 }
 
 /** Secret-storage key holding the DeepSeek API key. */
@@ -34,6 +37,7 @@ export const API_KEY_STORAGE_KEY = 'deepseek.apiKey'
 export function parseSettings(reader: ConfigurationReader): DshSettings {
   const node = reader.get<string>('node', '')
   const home = reader.get<string>('home', '')
+  const initial = reader.get<unknown>('initialPermissionMode', 'manual')
   return {
     command: reader.get<string>('command', 'dsh') ?? 'dsh',
     profile: reader.get<string>('profile', 'vscode') ?? 'vscode',
@@ -41,6 +45,7 @@ export function parseSettings(reader: ConfigurationReader): DshSettings {
     home: home === '' ? undefined : home,
     spawnTimeoutMs: reader.get<number>('spawnTimeoutMs', 30_000) ?? 30_000,
     extraEnv: reader.get<Record<string, string>>('extraEnv', {}) ?? {},
+    initialPreset: isInitialPermissionMode(initial) ? INITIAL_PRESETS[initial] : 'read-only',
   }
 }
 

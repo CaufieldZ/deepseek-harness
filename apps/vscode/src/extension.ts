@@ -5,6 +5,7 @@
  */
 import * as vscode from 'vscode'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import { ChildManager, type ChildFacts } from './child-manager.ts'
 import { NodeApiClient } from './api/node-client.ts'
 import { registerSessionCommands } from './commands.ts'
@@ -13,6 +14,10 @@ import {
   applyHunks, handleDiffAction, PendingDiffs, revertHunks, warnSkipped,
 } from './diff-actions.ts'
 import { SessionPanelManager } from './panels/session-panel.ts'
+import {
+  applyPreset, PERMISSION_PRESETS, PRESET_LABELS, presetOfEvent, toggledPreset,
+  type PermissionClient, type PermissionPreset,
+} from './permission-mode.ts'
 import { SessionTreeProvider, type SessionTreeSource } from './views/session-tree.ts'
 import {
   API_KEY_STORAGE_KEY,
@@ -38,12 +43,16 @@ class ApiKeyStore {
 let manager: ChildManager | undefined
 let client: NodeApiClient | undefined
 let statusBar: vscode.StatusBarItem | undefined
+let modeBadge: vscode.StatusBarItem | undefined
 let channel: vscode.OutputChannel | undefined
 let apiKey: string | undefined
 let describePending = false
 let panels: SessionPanelManager | undefined
 let tree: SessionTreeProvider | undefined
 let feed: VscodeContextFeed | undefined
+/** The latest known preset (initial setting, then the newest mux mode event). */
+let modePreset: PermissionPreset = 'read-only'
+let modeAbort: AbortController | undefined
 
 /** The tree source reads the current client per call, so child restarts swap cleanly. */
 function treeSource(): SessionTreeSource {
@@ -59,6 +68,61 @@ function treeSource(): SessionTreeSource {
     },
     hostFrames: signal => current().events.host({}, signal),
     muxFrames: signal => current().events.mux({}, signal),
+  }
+}
+
+/** The client face of the permission apply path (settings default + per-session command). */
+function permissionClient(): PermissionClient {
+  return {
+    setDefaultPreset: async (preset) => {
+      if (client === undefined) throw new Error('dsh child is not ready')
+      const response = await client.settings.mutate({ ns: 'permission', ops: [{ op: 'set', path: ['defaultPreset'], value: preset }] })
+      if (!response.result.ok) throw new Error('the child rejected the permission default')
+    },
+    executeCommand: async (sessionId, line) => {
+      if (client === undefined) throw new Error('dsh child is not ready')
+      await client.rpcCall('commands/execute', { sessionId, line, images: [] })
+    },
+  }
+}
+
+/** Reflect the current preset on the status-bar badge. */
+function renderModeBadge(): void {
+  if (modeBadge === undefined) return
+  const { icon, label } = PRESET_LABELS[modePreset]
+  modeBadge.text = `${icon} dsh: ${label}`
+  modeBadge.tooltip = 'dsh permission mode. Click to toggle Auto/Manual; "dsh: Set Permission Mode" offers Full Access.'
+}
+
+/** Follow the mux stream's mode events and keep the badge current. */
+function startModeTracker(): void {
+  modeAbort?.abort()
+  if (client === undefined) return
+  const controller = new AbortController()
+  modeAbort = controller
+  void (async () => {
+    try {
+      for await (const frame of client.events.mux({}, controller.signal)) {
+        if (frame.payload.type !== 'session/event') continue
+        const preset = presetOfEvent(frame.payload.event)
+        if (preset === undefined) continue
+        modePreset = preset
+        renderModeBadge()
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        channel?.appendLine(`[dsh-vscode] mode tracker ended: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  })()
+}
+
+/** Pin the new-session permission default once the child is ready. */
+async function applyInitialPreset(): Promise<void> {
+  try {
+    await permissionClient().setDefaultPreset(modePreset)
+  } catch (error) {
+    channel?.appendLine(`[dsh-vscode] initial permission preset failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -93,6 +157,10 @@ function configure(): void {
   // resolver with a blank environment rather than the extension host's env.
   feed = new VscodeContextFeed({ home: resolveDshHome(settings.home, {}) })
   feed.schedule(captureEditorFeed())
+  // The badge starts from the initial-permission setting; the mux tracker and
+  // the ready-time default pin refine it once the child answers.
+  modePreset = settings.initialPreset
+  renderModeBadge()
   manager.start()
 }
 
@@ -135,6 +203,8 @@ function renderFacts(facts: ChildFacts): void {
       statusBar.tooltip = String(facts.baseUrl ?? '')
       tree?.start()
       void describeOnce()
+      startModeTracker()
+      void applyInitialPreset()
       break
     }
     case 'stopped':
@@ -186,6 +256,9 @@ function syncContextKeys(): void {
 export function activate(context: vscode.ExtensionContext): void {
   channel = vscode.window.createOutputChannel('dsh')
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
+  modeBadge = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101)
+  renderModeBadge()
+  modeBadge.show()
   const store = new ApiKeyStore(context.secrets)
   syncContextKeys()
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
@@ -268,6 +341,41 @@ export function activate(context: vscode.ExtensionContext): void {
   const restartCommand = vscode.commands.registerCommand('dsh.restartChild', () => {
     configure()
   })
+  const toggleAutomodeCommand = vscode.commands.registerCommand('dsh.toggleAutomode', async () => {
+    const target = toggledPreset(modePreset)
+    try {
+      await applyPreset(permissionClient(), panels?.sessionIds() ?? [], target)
+      modePreset = target
+      renderModeBadge()
+    } catch (error) {
+      void vscode.window.showWarningMessage(`dsh: could not switch the permission mode: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+  const setPermissionModeCommand = vscode.commands.registerCommand('dsh.setPermissionMode', async () => {
+    const picked = await vscode.window.showQuickPick(
+      PERMISSION_PRESETS.map(preset => ({
+        label: PRESET_LABELS[preset].label,
+        detail: preset,
+        ...(preset === 'danger-full-access' ? { description: 'no approval prompts' } : {}),
+      })),
+      { title: 'dsh: Permission Mode', placeHolder: 'Manual / Auto / Full Access' },
+    )
+    if (picked === undefined) return
+    const preset = picked.detail
+    try {
+      await applyPreset(permissionClient(), panels?.sessionIds() ?? [], preset)
+      modePreset = preset
+      renderModeBadge()
+    } catch (error) {
+      void vscode.window.showWarningMessage(`dsh: could not set the permission mode: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+  const stopSessionCommand = vscode.commands.registerCommand('dsh.stopSession', async () => {
+    const sessionId = panels?.currentSessionId()
+    if (sessionId === undefined || client === undefined) return
+    const response = await client.sessions.cancel({ sessionId: sessionId as SessionId })
+    if (!response.result.ok) void vscode.window.showWarningMessage('dsh: could not stop the session')
+  })
   registerSessionCommands(context, {
     client: () => client,
     panels: () => panels,
@@ -279,9 +387,13 @@ export function activate(context: vscode.ExtensionContext): void {
     restartCommand,
     acceptDiffCommand,
     rejectDiffCommand,
+    toggleAutomodeCommand,
+    setPermissionModeCommand,
+    stopSessionCommand,
     treeView,
     tree,
     statusBar,
+    modeBadge,
     channel,
     vscode.window.registerWebviewPanelSerializer('dsh.session', panels),
     vscode.window.onDidChangeActiveTextEditor(() => { pendingContext() }),
@@ -305,6 +417,8 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  modeAbort?.abort()
+  modeAbort = undefined
   manager?.stop()
   manager = undefined
   client = undefined
@@ -313,5 +427,6 @@ export function deactivate(): void {
   panels = undefined
   tree = undefined
   statusBar = undefined
+  modeBadge = undefined
   channel = undefined
 }

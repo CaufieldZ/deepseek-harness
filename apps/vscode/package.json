@@ -59,6 +59,21 @@
         "command": "dsh.rejectDiff",
         "title": "Reject Change",
         "category": "dsh"
+      },
+      {
+        "command": "dsh.toggleAutomode",
+        "title": "Toggle Auto/Manual Permission Mode",
+        "category": "dsh"
+      },
+      {
+        "command": "dsh.setPermissionMode",
+        "title": "Set Permission Mode…",
+        "category": "dsh"
+      },
+      {
+        "command": "dsh.stopSession",
+        "title": "Stop Current Session",
+        "category": "dsh"
       }
     ],
     "menus": {
@@ -175,6 +190,16 @@
             "tab"
           ],
           "markdownDescription": "Where dsh sessions open. `tab` (editor tabs) ships today."
+        },
+        "dsh.initialPermissionMode": {
+          "type": "string",
+          "default": "manual",
+          "enum": [
+            "manual",
+            "auto",
+            "fullAccess"
+          ],
+          "markdownDescription": "Permission mode the harness child starts from (the new-session default). `manual` asks before every file change, `auto` allows workspace edits and asks for wider writes, `fullAccess` never prompts."
         }
       }
     }

@@ -18,14 +18,14 @@ interface Harness {
   failUnary: boolean
   /** When set, unary responses echo a foreign rpcId. */
   corruptRpcId: boolean
+  /** Gateway rpc calls the scripted child received, in order. */
+  rpcCalls: { endpoint: string; payload: unknown }[]
+  /** The result value gateway rpc calls answer with. */
+  rpcResult: unknown
 }
 
 async function makeHarness(): Promise<Harness> {
   const server = createServer((req, res) => {
-    if (req.url !== '/api/host.describe') {
-      res.writeHead(404).end()
-      return
-    }
     if (harness.failUnary) {
       res.writeHead(500).end()
       return
@@ -33,21 +33,37 @@ async function makeHarness(): Promise<Harness> {
     const body: Buffer[] = []
     req.on('data', (chunk: Buffer) => body.push(chunk))
     req.on('end', () => {
-      const request = JSON.parse(Buffer.concat(body).toString()) as { rpcId: string }
+      const request = JSON.parse(Buffer.concat(body).toString()) as { rpcId: string; method?: string; payload?: unknown }
+      if (req.url === '/api/host.describe') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({
+          type: 'server-response',
+          rpcId: harness.corruptRpcId ? 'foreign-rpc-id' : request.rpcId,
+          result: {
+            ok: true,
+            value: {
+              version: '0.0.0-test',
+              cwd: '/tmp',
+              attachedSessions: 0,
+              home: '/tmp/home',
+              canOpenPath: false,
+            },
+          },
+        }))
+        return
+      }
+      // Gateway rpc route: /api/<endpoint>; record the call and echo the scripted result.
+      const endpoint = req.url?.startsWith('/api/') ? req.url.slice('/api/'.length) : undefined
+      if (endpoint === undefined || request.method !== endpoint) {
+        res.writeHead(404).end()
+        return
+      }
+      harness.rpcCalls.push({ endpoint, payload: request.payload })
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(JSON.stringify({
         type: 'server-response',
         rpcId: harness.corruptRpcId ? 'foreign-rpc-id' : request.rpcId,
-        result: {
-          ok: true,
-          value: {
-            version: '0.0.0-test',
-            cwd: '/tmp',
-            attachedSessions: 0,
-            home: '/tmp/home',
-            canOpenPath: false,
-          },
-        },
+        result: harness.rpcResult,
       }))
     })
   })
@@ -68,6 +84,8 @@ async function makeHarness(): Promise<Harness> {
     client: new NodeApiClient(() => harness.base),
     failUnary: false,
     corruptRpcId: false,
+    rpcCalls: [],
+    rpcResult: { ok: true, value: { text: 'preset workspace-write' } },
   }
   return harness
 }
@@ -134,5 +152,24 @@ describe('NodeApiClient', () => {
     controller.abort()
     await expect(next).resolves.toEqual({ done: true, value: undefined })
     await serverClosed
+  })
+
+  it('rpcCall posts a client-request envelope to the gateway channel and returns its result', async () => {
+    const result = await harness.client.rpcCall('commands/execute', { sessionId: 's1', line: '/permission workspace-write', images: [] })
+    expect(result).toEqual({ ok: true, value: { text: 'preset workspace-write' } })
+    expect(harness.rpcCalls).toEqual([{
+      endpoint: 'commands/execute',
+      payload: { sessionId: 's1', line: '/permission workspace-write', images: [] },
+    }])
+  })
+
+  it('rpcCall rejects a response that echoes a foreign rpcId', async () => {
+    harness.corruptRpcId = true
+    await expect(harness.client.rpcCall('commands/execute', {})).rejects.toThrow(/rpcId mismatch/)
+  })
+
+  it('rpcCall surfaces transport failures', async () => {
+    harness.failUnary = true
+    await expect(harness.client.rpcCall('commands/execute', {})).rejects.toThrow(/HTTP 500/)
   })
 })

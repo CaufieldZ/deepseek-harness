@@ -26,8 +26,19 @@ export class SessionPanelManager implements vscode.WebviewPanelSerializer {
   private readonly bridges = new Map<string, HostBridge>()
   private readonly closedStack: string[] = []
   private bundles: readonly CuratedBundle[] | undefined
+  private lastOpened: string | undefined
 
   constructor(private readonly deps: SessionPanelDeps) {}
+
+  /** The open panel session ids, in open order (permission switches target them all). */
+  sessionIds(): readonly string[] {
+    return [...this.panels.keys()]
+  }
+
+  /** The most recently opened session id, the target of session-scoped host commands. */
+  currentSessionId(): string | undefined {
+    return this.lastOpened
+  }
 
   /** Open (or reveal) the panel for one session. */
   open(sessionId: string): void {
@@ -42,6 +53,7 @@ export class SessionPanelManager implements vscode.WebviewPanelSerializer {
       localResourceRoots: this.localResourceRoots(),
     })
     this.panels.set(sessionId, panel)
+    this.lastOpened = sessionId
     this.render(panel, sessionId)
     panel.onDidDispose(() => {
       this.bridges.get(sessionId)?.dispose()
